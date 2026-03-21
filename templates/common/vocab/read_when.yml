@@ -1,0 +1,51 @@
+# read_when vocabulary
+# Use these values in the `read_when:` frontmatter field of knowledge files.
+# They tell AI agents WHEN a file should be loaded into context.
+#
+# Usage example:
+#   read_when: [id_lookup, name_match]
+
+vocabulary:
+  id_lookup:
+    description: "When searching for an ID, code, or number"
+    example: "Looking up user ID 1234"
+
+  name_match:
+    description: "When matching or verifying a name/label"
+    example: "Confirming the correct spelling of a person's name"
+
+  person_context:
+    description: "When making a judgment about a specific person"
+    example: "Responding to a request from a known contact"
+
+  external_send:
+    description: "Before sending to an external party (email, chat, API)"
+    example: "Drafting an email to a client"
+
+  policy_check:
+    description: "When verifying a rule, policy, or constraint"
+    example: "Checking if an action is allowed"
+
+  decision_review:
+    description: "When referencing a past decision or rationale"
+    example: "Reviewing why a design choice was made"
+
+  failure_review:
+    description: "When investigating a failure or near-miss"
+    example: "Debugging a recurring bug pattern"
+
+  table_mapping:
+    description: "When mapping table columns, field names, or schemas"
+    example: "Translating column A to its meaning"
+
+  recruiting:
+    description: "When handling recruiting or applicant interactions"
+    example: "Responding to a job inquiry"
+
+  schedule_check:
+    description: "When checking schedules, availability, or deadlines"
+    example: "Looking up when a meeting is scheduled"
+
+  ongoing_task:
+    description: "When working on a task that spans multiple sessions"
+    example: "Resuming a multi-step project"
