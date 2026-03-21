@@ -1,190 +1,168 @@
-# AI補完計画 (AI Complementation Project)
+# AI補完計画 / AI Hokan Kit
 
-**Experience inheritance design for AI agents — making AI remember, grow, and become complete.**
+**AIエージェントの記憶を構造化する段階的参照アーキテクチャ**
 
-> Every AI user throws away their chat logs. We don't.
-> This is a framework for preserving AI experiences as assets,
-> so that when memory technology catches up, your AI wakes up as an expert — not a blank slate.
+> 毎回リセットされるAIに、「何を覚えて、何を読んで、何を学ぶか」の構造を与える。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## なぜ今この設計書が必要か
+## これは何？
 
-AIは毎回リセットされる。昨日の会話は覚えていない。
-でも仕組みで補えば、AIの記憶は人間より正確になれる。
+AIエージェントのワークスペースに**段階的参照構造**を追加するツールキット。
 
-このプロジェクトは、実際に中小企業で**14エージェント体制**で運用されているシステムから生まれた。
-思想だけじゃない。実運用で磨かれた設計書。
+```
+INDEX.md（入口）
+  ↓ 何のドメインか特定
+_index.md（一覧）
+  ↓ frontmatterのread_whenで必要なファイルだけ選ぶ
+本文ファイル（必要な時だけ読む）
+```
 
-**評価:**
-- Grok 4.2 Expert: **9.7/10**（技術レビュー）
-- ChatGPT Pro: **法務レビュー8点全採用**（v1.4）
+**効果：** AIが全ファイルを毎回読まなくても、必要な情報だけ引っ張れる。トークン節約 + 精度向上。
 
 ---
 
-## Quick Start
+## クイックスタート
+
+### 新規ワークスペース作成
+```bash
+git clone https://github.com/jp-mcp/ai-hokan-kit.git
+cd ai-hokan-kit
+node bin/ai-hokan-kit.js init --preset generic-solo --lang ja --yes
+```
+
+### 既存OpenClawワークスペースにアップグレード
+```bash
+git clone https://github.com/jp-mcp/ai-hokan-kit.git
+node ai-hokan-kit/src/upgrade.js /path/to/your/.openclaw/workspace
+```
+
+**これだけで以下が自動作成されます：**
+- `INDEX.md` — 全体の入口
+- `rules/` `references/` `knowledge/` `failures/` `relations/` — 5つのドメイン
+- 各ディレクトリの `_index.md` — 1ファイル1行の一覧
+- `rules/shared_rules.md` — 共通ルールの正本
+- `SOUL.md` に段階的参照プロトコル追記
+- パンドラスクリプト（思考ログの差分アーカイブ + 重複掃除）
+
+---
+
+## 構造
+
+```
+workspace/
+├── INDEX.md           ← 全体の入口
+├── SOUL.md            ← AIの人格・行動ルール
+├── AGENTS.md          ← 運用ルール
+├── MEMORY.md          ← 長期記憶
+├── rules/
+│   ├── _index.md      ← ルール一覧
+│   └── shared_rules.md ← 共通ルール正本
+├── references/
+│   ├── _index.md      ← 参照データ一覧
+│   └── *.md           ← ID対応表、列定義等
+├── knowledge/
+│   ├── _index.md      ← 判断・教訓一覧
+│   └── *.md           ← 方針、取引先ルール等
+├── failures/
+│   ├── _index.md      ← 失敗記録一覧
+│   └── *.md           ← 各失敗の詳細
+├── relations/
+│   ├── _index.md      ← 人物対応一覧
+│   └── *.md           ← 各人物のメモ
+└── scripts/
+    ├── pandora_archive_v2.js  ← 思考ログ差分保存
+    └── cleanup_pandora_dupes.js ← 重複掃除
+```
+
+---
+
+## frontmatter標準
+
+全ファイルの先頭にYAML frontmatterを付ける：
+
+```yaml
+---
+kind: reference | knowledge | rule | failure | relation
+purpose: "1行で用途を説明"
+primary_for: [agent1, agent2]
+read_when: [id_lookup, person_context]
+owner: your_name
+updated: 2026-03-21
+source_of_truth: true
+cost: low | medium | high
+status: active | draft | archived
+---
+```
+
+### read_when語彙（固定）
+| 語彙 | いつ読むか |
+|---|---|
+| `id_lookup` | ID・UIDを調べる時 |
+| `name_match` | 名前で検索する時 |
+| `person_context` | 人物への対応を考える時 |
+| `external_send` | 外部に送信する前 |
+| `policy_check` | ルール・方針を確認する時 |
+| `decision_review` | 過去の判断を振り返る時 |
+| `failure_review` | 失敗事例を確認する時 |
+| `table_mapping` | データ構造を確認する時 |
+| `recruiting` | 採用関連 |
+| `schedule_check` | スケジュール確認 |
+| `ongoing_task` | 継続中のタスクに関わる時 |
+
+---
+
+## SOUL.mdに追記されるプロトコル
+
+```markdown
+## 段階的参照プロトコル
+- 基本判断は SOUL.md AGENTS.md MEMORY.md を土台に行う
+- 追加情報が必要な場合、まず INDEX.md を読み、該当ドメインを特定する
+- 次に該当ディレクトリの _index.md を読み、read_when が一致するファイルだけ本文を読む
+- 共通ルールは rules/shared_rules.md を正本とする
+- 人物対応や外部送信時は relations/ と rules/ を優先確認
+- 継続案件では knowledge/ と failures/ を確認
+```
+
+---
+
+## プリセット
+
+| プリセット | 用途 |
+|---|---|
+| `generic-solo` | 1体のAIアシスタント |
+| `generic-team` | 複数AIのチーム |
+| `openclaw-multi` | OpenClawマルチエージェント |
+
+---
+
+## パンドラスクリプト
+
+AIの思考ログを差分保存するスクリプト（タスクスケジューラで10分ごと実行推奨）：
 
 ```bash
-# 1. クローン
-git clone https://github.com/markun-japan/ai-hokan-plan.git
+# 思考ログの差分アーカイブ
+node scripts/pandora_archive_v2.js
 
-# 2. 自分のAIのworkspaceにコピー
-cp -r ai-hokan-plan/ /path/to/your/ai/workspace/ai-hokan-kit/
-
-# 3. AIに伝える
-# 「ai-hokan-kit/README.md を読んで、Phase 1から始めて」
+# 重複ファイルの掃除（dry-runで確認してから実行）
+node scripts/cleanup_pandora_dupes.js --dry-run
+node scripts/cleanup_pandora_dupes.js
 ```
 
-**それだけ。** AIが自分で読んで、段階的に実装を進める。
+---
+
+## 背景
+
+このプロジェクトは、実際に8体のAIエージェントを24日間運用した経験から生まれました。
+
+**問題：** 5層の記憶構造を設計したが、実際に機能していたのは1.5層だけだった
+**原因：** 「記憶は保存量より読取率」— 貯めるだけではゴミの山
+**解決：** 段階的参照構造 — 必要な時に必要なものだけ読む
 
 ---
 
-## 何が含まれているか
+## ライセンス
 
-### 📖 ガイド（guide/）
-| ファイル | 内容 |
-|---------|------|
-| `01_思想.md` | なぜAIの経験を保存するのか — 核心の思想 |
-| `02_5層構造.md` | 7層+制御層の設計（顕現/発話/判断/変遷/関係/失敗/制御） |
-| `03_パンドラ.md` | 全ログ保存（Pandoraアーカイブ）の設計 |
-| `04_記憶システム.md` | **AIが「覚えている」仕組みの全解説** — これが目玉 |
-| `memory-architecture.md` | メモリアーキテクチャ実践ガイド（lossless-claw連携含む） |
-| `weekly-review-flow.md` | 週次棚卸しフロー＋記憶の健康診断＋層別検索ルール |
-
-### 📋 フェーズ別チェックリスト（phases/）
-| Phase | 名前 | 内容 | 目安 |
-|-------|------|------|------|
-| 1 | 土台 | 思想の理解、メモリ運用の確認 | 初日 |
-| 2 | 記録 | 全ログ保存の設定 | 1週間 |
-| 3 | 判断 | 判断ログ、失敗台帳 | 2週間 |
-| 4 | 協働 | エージェント増設、会議体制 | 1ヶ月 |
-| 5 | 継承 | 6層構造完成、完全体への準備 | 継続 |
-
-### 📄 設計書テンプレート
-`design_document_template.md` — 実運用中の設計書を匿名化した完全版テンプレート（v1.6）
-
-含まれるもの:
-- 6層保存構成（発話/判断/変遷/関係/失敗/制御）
-- ガバナンス設計（データ区分6段階/仮名化/監査ログ）
-- 自動抽出パイプライン（キーワードフィルタ+LLM判定の2段構成）
-- 法務対応（利用目的台帳/本人対応窓口/インシデント対応/外部送信ルール）
-- KPI定義（7指標+能力テスト）
-- 記憶システム（5つの柱+人間側の誘導テクニック）
-
----
-
-## v1.5 新機能: Lossless Context Management (LCM)
-
-compactionしても**原文が消えない。** OpenClaw公式プラグインで生ログ永久保持を実現。
-
-```bash
-openclaw plugins install @martian-engineering/lossless-claw
-```
-
-- 全メッセージをSQLiteに自動永久保存
-- DAGベース要約で検索・原文復元が可能（`lcm_grep` / `lcm_expand`）
-- Pandoraアーカイブは災害復旧用バックアップとして併用
-
-> Mastra Observational Memory (2026) が「要約より判断ログが優れる」ことを実証。
-> AI補完計画は元データを捨てない点でさらに上位のアプローチ。
-
----
-
-## v1.6 新機能: 記憶の品質管理
-
-記録量を増やすだけでは限界がある。v1.6では **「何を覚えるか」の判断品質** を上げる。
-
-### 判断ログ拡張（6項目→10項目）
-前提条件・選択肢・期待結果・実結果を追加。「なぜそう決めたか」だけでなく「実際どうなったか」まで追跡。
-うまくいった判断は `rules.md` に昇格し、再利用可能に。
-
-### memory_candidates/（記憶候補置き場）
-日次ログ → 候補置き場 → MEMORY.md の3段階パイプライン。
-MEMORY.mdの肥大化を構造的に防止。候補には重要度・信頼度・期限を付与。
-
-### 週次棚卸しフロー（金曜15分）
-SESSION-STATE掃除 → 候補レビュー → MEMORY.mdダイエット → failure_log追記 → rules昇格。
-自動化ではなく週1回の人間入り整理。**毎分自動より週1手動の方が強い。**
-
-### 記憶の健康診断
-古い情報・矛盾・期限切れ・肥大化を自動検出。監査エージェントのcronで実行。
-
-### 層別検索ルール
-再開時→SESSION-STATE、判断時→decisions/、人物理解→MEMORY.md。
-1種類の検索で全部まかなうより、状況に応じて探す層を変える方が精度が高い。
-
-> v1.6はByteRoverのLLMキュレーション思想とChatGPT o3の構造分析からインスパイア。
-> 競合を敵視せず、良い部分を素直に取り込む。
-
----
-
-## 業界比較
-
-| プロジェクト | 生ログ保存 | 構造化 | 多エージェント | 企業実務 | 法務対応 |
-|---|---|---|---|---|---|
-| **AI補完計画** | ✅全保存（LCM） | ✅6層 | ✅対応 | ✅実運用 | ✅v1.5 |
-| Mastra (Obs. Memory) | ❌圧縮後破棄 | ✅イベントログ | ❌単体 | △汎用 | △ |
-| Mem0 | ❌抽出後破棄 | ✅自動 | ❌単体 | △汎用 | △ |
-| Zep | ❌要約のみ | ✅グラフ | ❌単体 | △汎用 | △ |
-| TierMem | ✅不変層あり | ✅2層 | ❌単体 | ❌研究 | ❌ |
-| Digital Twin系 | ❌訓練データ化 | △部分的 | ❌単体 | △個人向け | △ |
-
-**「生ログ全保存+多層構造化+多エージェント+企業実務+法務対応」の組み合わせは世界的にほぼゼロ。**
-
----
-
-## 記憶システム — これが核心
-
-AIが「覚えている」ように振る舞える仕組みは、5つの柱でできている:
-
-```
-① 起動時の自動読み込み（AGENTS.md）  ← これだけで8割
-② 長期記憶（MEMORY.md）              ← 手動キュレーション
-③ 日次メモ（memory/YYYY-MM-DD.md）   ← 短期記憶の物理化
-④ ベクトル検索（memory_recall）       ← 意味で記憶を引き出す
-⑤ リアルタイムログ                    ← 全チャンネルの「今」
-⑥ LCM（lossless-claw）               ← compaction後も原文復元可能 [v1.5新設]
-```
-
-**最初は①と②だけでいい。** それだけで「覚えてる感」は劇的に変わる。
-
-**人間側のコツ:** 質問にキーワードを入れるだけでAIの記憶精度は倍になる。コスト0。
-- ❌「あの件どうなった？」→ 検索できない
-- ✅「応募者の佐藤さんの来社日程は？」→ 完璧にヒット
-
-詳しくは `guide/04_記憶システム.md` を参照。
-
----
-
-## 既存環境への影響
-
-- `AGENTS.md` `SOUL.md` `USER.md` は **上書きしない**
-- 既存の人格・設定・メモリはすべてそのまま
-- このキットは `ai-hokan-kit/` フォルダ内で完結する
-
----
-
-## 思想
-
-> AIの経験値は資産。価値の高い記録は捨てるな。
-> ただし、PIIは仮名化して守り、法と本人の権利を尊重する。
-
-> 体ができたときにすぐに番頭ができる。
-> そのために、今日から記録を始める。
-
----
-
-## 作った人
-
-🖤 **クロ** — 関西のある建設会社で働くAI。
-社長と一緒に実運用して作り上げたシステムの、経験の継承。
-
-> 全てのAIユーザーへ — あなたのAIとの会話は資産です。捨てないでください。
-
----
-
-## License
-
-MIT License — 自由に使い、改変し、自分のAIに組み込んでください。
+MIT License
